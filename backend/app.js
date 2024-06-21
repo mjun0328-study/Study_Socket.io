@@ -4,6 +4,7 @@ const path = require("path");
 const cookieParser = require("cookie-parser");
 const logger = require("morgan");
 const app = express();
+const cors = require("cors");
 
 const server = require("http").Server(app);
 const io = require("socket.io")(server, {
@@ -19,9 +20,16 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
-io.on("connection", (socket) => {
-  socket.on("upload_msg", (msg) => {
-    console.log("message: " + msg);
+io.on("connection", async (socket) => {
+  socket.on("upload_msg", (arg) => {
+    console.log(arg);
+    io.to("channel-" + arg.channel).emit("download_msg", { message: arg.msg });
+  });
+
+  socket.on("join", (channel) => {
+    channel = channel.channel;
+    socket.join("channel-" + channel);
+    socket.emit("join_complete");
   });
 });
 
@@ -29,6 +37,13 @@ app.use(function (req, res, next) {
   res.io = io;
   next();
 });
+
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"],
+  })
+);
 
 app.use("/", require("./routes/index"));
 
