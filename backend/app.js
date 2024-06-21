@@ -5,14 +5,7 @@ const cookieParser = require("cookie-parser");
 const logger = require("morgan");
 const app = express();
 const cors = require("cors");
-
-const server = require("http").Server(app);
-const io = require("socket.io")(server, {
-  cors: {
-    origin: "http://localhost:3000",
-    mathods: ["GET", "POST"],
-  },
-});
+const session = require("express-session");
 
 app.use(logger("dev"));
 app.use(express.json());
@@ -20,16 +13,55 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
+app.set("trust proxy", 1);
+const sessionMiddleware = session({
+  resave: false,
+  saveUninitialized: true,
+  secret: "Hello, Socket.io!",
+});
+
+const corsOptions = {
+  origin: ["http://localhost:3000"],
+  credentials: true,
+};
+
+const server = require("http").Server(app);
+const io = require("socket.io")(server, {
+  cors: corsOptions,
+});
+
+app.use(cors(corsOptions));
+
+app.use(sessionMiddleware);
+io.engine.use(sessionMiddleware);
+
 io.on("connection", async (socket) => {
   socket.on("upload_msg", (arg) => {
-    console.log(arg);
-    io.to("channel-" + arg.channel).emit("download_msg", { message: arg.msg });
+    const session = socket.request.session;
+    const name = session.name ?? "Unknown";
+    io.to("channel-" + arg.channel).emit("download_msg", {
+      channel: arg.channel,
+      message: arg.msg,
+      sender: name,
+    });
   });
 
-  socket.on("join", (channel) => {
-    channel = channel.channel;
-    socket.join("channel-" + channel);
-    socket.emit("join_complete");
+  socket.on("join", (arg) => {
+    socket.join("channel-" + arg.channel);
+    socket.emit("join_complete", { channel: arg.channel });
+  });
+
+  socket.on("leave", (arg) => {
+    socket.leave("channel-" + arg.channel);
+  });
+
+  socket.on("setName", (arg) => {
+    const req = socket.request;
+    req.session.reload((err) => {
+      if (err) socket.disconnect();
+      req.session.name = arg.name;
+      req.session.save();
+    });
   });
 });
 
@@ -37,13 +69,6 @@ app.use(function (req, res, next) {
   res.io = io;
   next();
 });
-
-app.use(
-  cors({
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST"],
-  })
-);
 
 app.use("/", require("./routes/index"));
 

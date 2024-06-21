@@ -1,12 +1,20 @@
-import { Container } from "./Container";
+import { Chat } from "./Chat";
+import { Name } from "./Name";
+import { socketAddress } from "./socket";
+import io from "socket.io-client";
 
 function App() {
+  const socket = io(socketAddress, {
+    withCredentials: true,
+  });
+
   return (
     <>
-      <Container channel={1} />
-      <Container channel={2} />
-      <Container channel={3} />
-      <Container channel={4} />
+      <Name socket={socket} />
+      <Chat socket={socket} channel={1} />
+      <Chat socket={socket} channel={2} />
+      <Chat socket={socket} channel={3} />
+      <Chat socket={socket} channel={4} />
     </>
   );
 }

@@ -2,35 +2,29 @@ import { useCallback, useEffect, useState } from "react";
 
 export const Chat = ({ socket, channel }) => {
   const [state, setState] = useState(false);
-  const [receive, setReceive] = useState("");
+  const [receive, setReceive] = useState(false);
   const [send, setSend] = useState("");
 
   useEffect(() => {
-    const connect = async () => {
-      socket.emit("join", { channel });
-    };
-
     const disconnect = () => {
       setState(false);
     };
 
     const download = (arg) => {
-      setReceive(arg.message);
+      if (channel === arg.channel) setReceive(arg);
     };
 
-    const joined = () => {
-      setState(true);
+    const joinComplete = (arg) => {
+      if (channel === arg.channel) setState(true);
     };
 
-    socket.on("connect", connect);
     socket.on("disconnect", disconnect);
     socket.on("download_msg", download);
-    socket.on("join_complete", joined);
+    socket.on("join_complete", joinComplete);
     return () => {
-      socket.off("connect", connect);
       socket.off("disconnect", disconnect);
       socket.off("download_msg", download);
-      socket.off("join_complete", joined);
+      socket.off("join_complete", joinComplete);
       socket.disconnect();
     };
   }, [socket, channel]);
@@ -40,12 +34,29 @@ export const Chat = ({ socket, channel }) => {
     socket.emit("upload_msg", { msg: send, channel });
   }, [socket, state, send, channel]);
 
+  const join = useCallback(() => {
+    socket.emit("join", { channel });
+  }, [socket, channel]);
+
+  const leave = useCallback(() => {
+    socket.emit("leave", { channel });
+    setState(false);
+  }, [socket, channel]);
+
   return (
     <div>
       <strong>Channel {channel}</strong>
-      <p>Receive: {receive}</p>
+      <p>{receive && `${receive.sender}: ${receive.message}`}</p>
       <div>
-        <input value={send} onChange={(e) => setSend(e.target.value)} />
+        <button onClick={join}>Join</button>
+        <button onClick={leave}>Leave</button>
+      </div>
+      <div>
+        <input
+          value={send}
+          onChange={(e) => setSend(e.target.value)}
+          disabled={!state}
+        />
         <button onClick={onSend}>Send</button>
       </div>
     </div>
