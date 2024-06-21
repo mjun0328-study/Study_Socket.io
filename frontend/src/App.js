@@ -1,12 +1,12 @@
-import { Chat } from "./Chat";
+import { Container } from "./Container";
 
 function App() {
   return (
     <>
-      <Chat channel={1} />
-      <Chat channel={2} />
-      <Chat channel={3} />
-      <Chat channel={4} />
+      <Container channel={1} />
+      <Container channel={2} />
+      <Container channel={3} />
+      <Container channel={4} />
     </>
   );
 }

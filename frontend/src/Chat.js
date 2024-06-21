@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { socketAddress } from "./socket";
-import io from "socket.io-client";
 
-export const Chat = ({ channel }) => {
-  const socket = io(socketAddress);
-
+export const Chat = ({ socket, channel }) => {
   const [state, setState] = useState(false);
   const [receive, setReceive] = useState("");
   const [send, setSend] = useState("");
